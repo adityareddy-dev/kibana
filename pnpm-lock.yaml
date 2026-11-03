@@ -319,8 +319,6 @@ overrides:
   vega-util: 2.1.0
   vscode-languageserver-types: 3.17.5
 
-pnpmfileChecksum: sha256-JL9Z/8IecLxwanP1rhrhbsvFTvupuyak+iLixXT5Rmk=
-
 importers:
 
   .:
@@ -4875,13 +4873,13 @@ importers:
         version: 2.6.5
       redux-devtools-extension:
         specifier: 2.13.8
-        version: 2.13.8
+        version: 2.13.8(redux@5.0.1)
       redux-saga:
         specifier: 1.3.0
         version: 1.3.0
       redux-thunk-v2:
         specifier: npm:redux-thunk@2.4.2
-        version: redux-thunk@2.4.2
+        version: redux-thunk@2.4.2(redux@5.0.1)
       redux-toolkit-v1:
         specifier: npm:@reduxjs/toolkit@1.9.7
         version: '@reduxjs/toolkit@1.9.7(react-redux@9.2.0(@types/react@18.2.79)(react@18.2.0)(redux@5.0.1))(react@18.2.0)'
@@ -6705,8 +6703,8 @@ importers:
         specifier: 8.2.5
         version: 8.2.5
       lmdb:
-        specifier: 3.5.6
-        version: 3.5.6
+        specifier: 3.5.8
+        version: 3.5.8
       magic-string:
         specifier: 0.30.21
         version: 0.30.21
@@ -12352,38 +12350,38 @@ packages:
       '@launchdarkly/node-server-sdk': ^9.0.0
       '@openfeature/server-sdk': ^1.16.0
 
-  '@lmdb/lmdb-darwin-arm64@3.5.6':
-    resolution: {integrity: sha512-mY5FG4TjPAkY4P0w+OhHaUka5mDh2TX2WKYIwuKzJ1zeW3VvRgxdam/lGJTquI+bthTx5CSHDW+BAQCnNAzkEA==}
+  '@lmdb/lmdb-darwin-arm64@3.5.8':
+    resolution: {integrity: sha512-Q60dmrMe6a43+pDsQ84ACznfkehG+TXoyYEvFQbLM0H/gZPbYJjGrrr+HynNtmIcbJLtvEaf1gNusidAbs3smw==}
     cpu: [arm64]
     os: [darwin]
 
-  '@lmdb/lmdb-darwin-x64@3.5.6':
-    resolution: {integrity: sha512-foa+pwitysO8k+xhs7psBFfTKnVgR69NlZRRTHaFVDqphh7AdGpLeyRzKw/ofatr/sN6TiHRRW6mmop0ZrrppQ==}
+  '@lmdb/lmdb-darwin-x64@3.5.8':
+    resolution: {integrity: sha512-MdaDrRA7ea002OLLT4ESgZ79dtkxwEkKI116RU4x1uyhYjdnJKDdE1lxlLFalimLDJPNq7nlGr5zWt7q62vGfQ==}
     cpu: [x64]
     os: [darwin]
 
-  '@lmdb/lmdb-linux-arm64@3.5.6':
-    resolution: {integrity: sha512-HmiyFFdJa38s1heCMSooSPaBSFTHJ3C+ERPp28xAPlDX1YiALJVOgbry065nXd8Y7KISWjnw05zpG1RX8IfftA==}
+  '@lmdb/lmdb-linux-arm64@3.5.8':
+    resolution: {integrity: sha512-oizHNyCu8qBIvBngRg8gTR1HGNashG4muyESYkBWcKbrrMNucb0cvAv+9ArOmASGUfZI7hAPGeUluhhLVnDC3Q==}
     cpu: [arm64]
     os: [linux]
 
-  '@lmdb/lmdb-linux-arm@3.5.6':
-    resolution: {integrity: sha512-QR4YRyR5h5Z8eGXrNQjiyo2NNDfqi3tCc9dQG5Is1blCt+qWw1ZoBWhlWAr5d+jshkifMIJjVHzHGKbkKzF8Tw==}
+  '@lmdb/lmdb-linux-arm@3.5.8':
+    resolution: {integrity: sha512-nM0WjpQFhWAlk9Foy4wCbaT8et4YIBKWx42QEW59RapMvUv+jNA++cDQa7wYx95xz8nE45qs72vMnbM6JqPh9g==}
     cpu: [arm]
     os: [linux]
 
-  '@lmdb/lmdb-linux-x64@3.5.6':
-    resolution: {integrity: sha512-ADzCuCF2cTNiX9kDScqcz1fjnAkxPpQNneV3KFTdV3wWtVlI2sTGzySoMTgDpinkMMFj1NTJlxA6XR8fwc4hlA==}
+  '@lmdb/lmdb-linux-x64@3.5.8':
+    resolution: {integrity: sha512-9G8w+2kCEE2N0A+UMhvcIc8/vpdt1siGtsVxuUcm5RX6Mg3HnmXF82MLMSKSRCdly1CgzZAS//Hu7TuXeiB0MA==}
     cpu: [x64]
     os: [linux]
 
-  '@lmdb/lmdb-win32-arm64@3.5.6':
-    resolution: {integrity: sha512-J7A9aEQsQiv0TYtBGL7NDIPp2lOS8nnl+zm4sWZm1xlsTTaQ4PgD096Adzdrk27rw3UxCkDXdCUa4ax41oztBQ==}
+  '@lmdb/lmdb-win32-arm64@3.5.8':
+    resolution: {integrity: sha512-8w3AL/pK0/yI6Mcksaaa5bqJPhoh4N0+F5Aw4/i3iye3dtyT5M5+BzcaFg5xzFeeul0sepMRkHOAm08FxBv+2A==}
     cpu: [arm64]
     os: [win32]
 
-  '@lmdb/lmdb-win32-x64@3.5.6':
-    resolution: {integrity: sha512-1g7G0knRX2iV/voDu54yxrGqw5Dk0w2oIYb7dgJq8IkOi+m7wbD8Q3QpPFjh0C01G58S88dqGn03len6UPCXsg==}
+  '@lmdb/lmdb-win32-x64@3.5.8':
+    resolution: {integrity: sha512-5LTEhKpg1AppD/BXwsYH/TufP6Sg46DfZTG0k2vdP2mhAW8sRd20BS0eL7VjVoJSHG3p+JF5naFzDsQT6XEGRw==}
     cpu: [x64]
     os: [win32]
 
@@ -20593,8 +20591,8 @@ packages:
     resolution: {integrity: sha512-iyAZCeyD+c1gPyE9qpFu8af0Y+MRtmKOncdGoA2S5EY8iFq99dmmvkNnHiWo+pj0s7yH7l3KPIgee77tKpXPWQ==}
     engines: {node: '>=18.0.0'}
 
-  lmdb@3.5.6:
-    resolution: {integrity: sha512-j3uE8ReKNyUWDjhfEFSJqE/1DLtfTR5Z8yFzVHvBjAk37wNg7HdScjcv8ttPHRvrdgPQMPWxFFI0SsdBzI5lBw==}
+  lmdb@3.5.8:
+    resolution: {integrity: sha512-bP61whBLS9T9jQxp7uOf802OOudXLTMA3icvt4bgna9fCbBSqukC9rtx2wZnWvP3GCMqCefXdHgV1OcZEN94oA==}
     hasBin: true
 
   loader-runner@4.3.2:
@@ -21743,8 +21741,8 @@ packages:
     resolution: {integrity: sha512-6VlU9MLXbjVQD04AZCMX28hVtA5bUoadvUqO76MUCVA0ilwJbMiHsITRPfyVm6p/BC0Av/BXMujx39WCe1LEqw==}
     engines: {node: '>=20'}
 
-  ordered-binary@1.6.2:
-    resolution: {integrity: sha512-BY+qgDArmYpvvmij141xbkB4Cw8RFLBQM5Zj4MODFb1SyXBRE/xO4Xj/QWbR7aUEBxbkjuNdsFVCL2TmbYrlNg==}
+  ordered-binary@1.6.3:
+    resolution: {integrity: sha512-Bc8LnA2x4ZHRQ9LjCm/NOdD3+CTQPhGNu8m7/6+ERtiB6Bb/fn7nCySwcmAC+5WCqwelpSAQgo1VX9BGpsC0tQ==}
 
   original-url@1.2.3:
     resolution: {integrity: sha512-BYm+pKYLtS4mVe/mgT3YKGtWV5HzN/XKiaIu1aK4rsxyjuHeTW9N+xVBEpJcY1onB3nccfH0RbzUEoimMqFUHQ==}
@@ -22921,12 +22919,16 @@ packages:
   redux-devtools-extension@2.13.8:
     resolution: {integrity: sha512-8qlpooP2QqPtZHQZRhx3x3OP5skEV1py/zUdMY28WNAocbafxdG2tRD1MWE7sp8obGMNYuLWanhhQ7EQvT1FBg==}
     deprecated: Package moved to @redux-devtools/extension.
+    peerDependencies:
+      redux: ^3.1.0 || ^4.0.0
 
   redux-saga@1.3.0:
     resolution: {integrity: sha512-J9RvCeAZXSTAibFY0kGw6Iy4EdyDNW7k6Q+liwX+bsck7QVsU78zz8vpBRweEfANxnnlG/xGGeOvf6r8UXzNJQ==}
 
   redux-thunk@2.4.2:
     resolution: {integrity: sha512-+P3TjtnP0k/FEjcBL5FZpoovtvrTNT/UXd4/sluaSyrURlSlhLSzEdfsTBW7WsKB6yPvgd7q/iZPICFjW4o57Q==}
+    peerDependencies:
+      redux: ^4
 
   redux-thunk@3.1.0:
     resolution: {integrity: sha512-NW2r5T6ksUKXCabzhL9z+h206HQw/NJkcLm1GPImRQ8IzfXwRGqjVhKJGauHirT0DAuyy6hjdnMZaRoAcy0Klw==}
@@ -28908,25 +28910,25 @@ snapshots:
       '@launchdarkly/openfeature-js-server-common': 2.0.6(@openfeature/server-sdk@1.23.0(@openfeature/core@1.12.0))
       '@openfeature/server-sdk': 1.23.0(@openfeature/core@1.12.0)
 
-  '@lmdb/lmdb-darwin-arm64@3.5.6':
+  '@lmdb/lmdb-darwin-arm64@3.5.8':
     optional: true
 
-  '@lmdb/lmdb-darwin-x64@3.5.6':
+  '@lmdb/lmdb-darwin-x64@3.5.8':
     optional: true
 
-  '@lmdb/lmdb-linux-arm64@3.5.6':
+  '@lmdb/lmdb-linux-arm64@3.5.8':
     optional: true
 
-  '@lmdb/lmdb-linux-arm@3.5.6':
+  '@lmdb/lmdb-linux-arm@3.5.8':
     optional: true
 
-  '@lmdb/lmdb-linux-x64@3.5.6':
+  '@lmdb/lmdb-linux-x64@3.5.8':
     optional: true
 
-  '@lmdb/lmdb-win32-arm64@3.5.6':
+  '@lmdb/lmdb-win32-arm64@3.5.8':
     optional: true
 
-  '@lmdb/lmdb-win32-x64@3.5.6':
+  '@lmdb/lmdb-win32-x64@3.5.8':
     optional: true
 
   '@loaders.gl/core@3.4.7':
@@ -30471,7 +30473,7 @@ snapshots:
     dependencies:
       immer: 9.0.21
       redux: 4.2.1
-      redux-thunk: 2.4.2
+      redux-thunk: 2.4.2(redux@4.2.1)
       reselect: 4.1.8
     optionalDependencies:
       react: 18.2.0
@@ -38380,22 +38382,22 @@ snapshots:
       rfdc: 1.4.1
       wrap-ansi: 9.0.2
 
-  lmdb@3.5.6:
+  lmdb@3.5.8:
     dependencies:
       '@harperfast/extended-iterable': 1.0.3
       msgpackr: 1.12.1
       node-addon-api: 6.1.0
       node-gyp-build-optional-packages: 5.2.2
-      ordered-binary: 1.6.2
+      ordered-binary: 1.6.3
       weak-lru-cache: 1.2.2
     optionalDependencies:
-      '@lmdb/lmdb-darwin-arm64': 3.5.6
-      '@lmdb/lmdb-darwin-x64': 3.5.6
-      '@lmdb/lmdb-linux-arm': 3.5.6
-      '@lmdb/lmdb-linux-arm64': 3.5.6
-      '@lmdb/lmdb-linux-x64': 3.5.6
-      '@lmdb/lmdb-win32-arm64': 3.5.6
-      '@lmdb/lmdb-win32-x64': 3.5.6
+      '@lmdb/lmdb-darwin-arm64': 3.5.8
+      '@lmdb/lmdb-darwin-x64': 3.5.8
+      '@lmdb/lmdb-linux-arm': 3.5.8
+      '@lmdb/lmdb-linux-arm64': 3.5.8
+      '@lmdb/lmdb-linux-x64': 3.5.8
+      '@lmdb/lmdb-win32-arm64': 3.5.8
+      '@lmdb/lmdb-win32-x64': 3.5.8
 
   loader-runner@4.3.2: {}
 
@@ -39835,7 +39837,7 @@ snapshots:
       stdin-discarder: 0.3.2
       string-width: 8.3.0
 
-  ordered-binary@1.6.2: {}
+  ordered-binary@1.6.3: {}
 
   original-url@1.2.3:
     dependencies:
@@ -41229,17 +41231,21 @@ snapshots:
       reduce-reducers: 0.4.3
       to-camel-case: 1.0.0
 
-  redux-devtools-extension@2.13.8:
+  redux-devtools-extension@2.13.8(redux@5.0.1):
     dependencies:
-      redux: 4.2.1
+      redux: 5.0.1
 
   redux-saga@1.3.0:
     dependencies:
       '@redux-saga/core': 1.3.0
 
-  redux-thunk@2.4.2:
+  redux-thunk@2.4.2(redux@4.2.1):
     dependencies:
       redux: 4.2.1
+
+  redux-thunk@2.4.2(redux@5.0.1):
+    dependencies:
+      redux: 5.0.1
 
   redux-thunk@3.1.0(redux@5.0.1):
     dependencies:
