@@ -586,6 +586,7 @@ export class NightshiftInvestigationsPlugin
         plugins.workflowsExtensions.registerStepDefinition(
           cortexOptimizeStepDefinition({
             getAgentBuilder: () => this.agentBuilder,
+            getWorkflowsManagement: () => this.workflowsManagement,
             getInference: () => this.inference,
             getSavedObjects: () => this.savedObjects,
             getUiSettings: () => this.uiSettings,
@@ -597,6 +598,7 @@ export class NightshiftInvestigationsPlugin
         plugins.workflowsExtensions.registerStepDefinition(
           memoryOptimizeStepDefinition({
             getAgentBuilder: () => this.agentBuilder,
+            getWorkflowsManagement: () => this.workflowsManagement,
             getInference: () => this.inference,
             getSavedObjects: () => this.savedObjects,
             getUiSettings: () => this.uiSettings,
@@ -616,6 +618,7 @@ export class NightshiftInvestigationsPlugin
                     .connectorId
                 : this.ctx.config.get().sandbox?.telemetry_connector_id,
             getAgentBuilder: () => this.agentBuilder,
+            getWorkflowsManagement: () => this.workflowsManagement,
             getSavedObjects: () => this.savedObjects,
             getUiSettings: () => this.uiSettings,
             logger: this.logger.get('decision_trees'),

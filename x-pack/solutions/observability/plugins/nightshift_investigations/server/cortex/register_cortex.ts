@@ -12,6 +12,7 @@ import type {
   KibanaRequest,
   Logger,
 } from '@kbn/core/server';
+import type { WorkflowsServerPluginSetup } from '@kbn/workflows-management-plugin/server';
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-server';
 import type { InferenceServerStart } from '@kbn/inference-plugin/server';
 import type { ContextEnginePluginSetup } from '@kbn/context-engine-plugin/server';
@@ -26,8 +27,11 @@ import { SANDBOX_TOOL_IDS } from '../agents/investigation';
 import { usesKnowledge } from '../agents/agent_policy';
 import type { InvestigationToolCall } from '../decision_trees/accessed_trees';
 import {
+  countsAsConfirmation,
   extractWorkspaceReads,
+  formatRoundOutcome,
   loadInvestigationRound,
+  loadRoundOutcome,
   type AppliedWriteRecord,
 } from '../investigation_round';
 import { createCortexTelemetry } from '../telemetry';
@@ -132,6 +136,7 @@ export const runCortexOptimize = async ({
   interactionId,
   signal,
   getAgentBuilder,
+  getWorkflowsManagement,
   analytics,
   conversationId,
   roundId,
@@ -153,6 +158,7 @@ export const runCortexOptimize = async ({
   interactionId: string;
   signal?: AbortSignal;
   getAgentBuilder: () => AgentBuilderPluginStart | undefined;
+  getWorkflowsManagement?: () => Pick<WorkflowsServerPluginSetup, 'management'> | undefined;
   analytics: AnalyticsServiceSetup;
   conversationId?: string;
   roundId?: string;
@@ -213,6 +219,22 @@ export const runCortexOptimize = async ({
   }
 
   const resolvedRoundId = loadedRound.roundId || roundId;
+  const outcome = await loadRoundOutcome({
+    agentBuilder: getAgentBuilder(),
+    workflowsManagement: getWorkflowsManagement?.(),
+    request,
+    spaceId,
+    conversationId,
+    roundId: resolvedRoundId,
+    logger,
+    signal,
+  });
+  const allowCorroboration = countsAsConfirmation(outcome);
+  if (!allowCorroboration) {
+    logger.info(
+      `Cortex optimizer will not corroborate pages for round ${resolvedRoundId}: it confirmed no root cause`
+    );
+  }
   const store = createCortexStore({ esClient, logger, spaceId, signal });
   const appliedWrites = await optimizeCortex({
     store,
@@ -231,6 +253,8 @@ export const runCortexOptimize = async ({
       roundId: resolvedRoundId,
       workflowExecutionId: interactionId,
     },
+    roundOutcome: formatRoundOutcome(outcome),
+    allowCorroboration,
     logger,
   });
   return { openedIds, appliedWrites };

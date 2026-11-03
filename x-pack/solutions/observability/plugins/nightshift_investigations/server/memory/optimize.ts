@@ -1129,6 +1129,8 @@ export const optimizeMemory = async ({
   conversationId,
   roundId,
   workflowExecutionId,
+  roundOutcome,
+  allowUseful = true,
   logger,
   signal,
 }: {
@@ -1145,6 +1147,10 @@ export const optimizeMemory = async ({
   conversationId?: string;
   roundId?: string;
   workflowExecutionId?: string;
+  /** What a follow-up did to the root cause, from `formatRoundOutcome`. */
+  roundOutcome?: string;
+  /** False for a round that confirmed nothing: no recalled memory is marked useful. */
+  allowUseful?: boolean;
   logger: Logger;
   signal?: AbortSignal;
 }): Promise<MemoryOptimizeSummary> => {
@@ -1199,12 +1205,24 @@ export const optimizeMemory = async ({
       `Memory critique LLM start nightshift_memory_critique recalled=${recalledMemories.length} ` +
         `opened=${openedMemoryIds.size} transcriptChars=${transcript.length}`
     );
-    labels = await proposeLabels({ transcript, recalledMemories, openedMemoryIds });
+    labels = await proposeLabels({
+      transcript: roundOutcome
+        ? `${transcript}\n\nWhat this follow-up did to the root cause:\n${roundOutcome}`
+        : transcript,
+      recalledMemories,
+      openedMemoryIds,
+    });
     logger.debug(
       `Memory critique LLM done ${Date.now() - critiqueStarted}ms ` +
         `useful=[${labels.useful.join(', ') || '(none)'}] ` +
         `harmful=[${labels.harmful.join(', ') || '(none)'}]`
     );
+    if (!allowUseful && labels.useful.length > 0) {
+      logger.info(
+        `Memory optimizer dropped ${labels.useful.length} useful label(s): the round confirmed no root cause`
+      );
+      labels = { ...labels, useful: [] };
+    }
   }
 
   signal?.throwIfAborted();

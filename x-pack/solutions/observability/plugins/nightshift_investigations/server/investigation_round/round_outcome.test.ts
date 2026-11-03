@@ -90,7 +90,26 @@ describe('resolveRound', () => {
       resolveRound(conversation([R1, R2], [AFTER_R1, before], [AFTER_R2, after]), {
         roundId: 'r2',
       })
-    ).toEqual({ roundKind: 'follow_up', roundId: 'r2', outcome, hasConfirmedCause });
+    ).toMatchObject({ roundKind: 'follow_up', roundId: 'r2', outcome, hasConfirmedCause });
+  });
+
+  it('lists the hypotheses that were newly, no longer and still confirmed', () => {
+    const reasoned = { ...gateway('dismissed'), reason: 'Pool metrics were normal.' };
+    expect(
+      resolveRound(
+        conversation(
+          [R1, R2],
+          [AFTER_R1, [gateway('confirmed'), database('investigating')]],
+          [AFTER_R2, [reasoned, database('confirmed')]]
+        ),
+        { roundId: 'r2' }
+      )
+    ).toMatchObject({
+      outcome: 'changed',
+      newlyConfirmed: [database('confirmed')],
+      noLongerConfirmed: [reasoned],
+      stillConfirmed: [],
+    });
   });
 
   it('judges a round by the last version before the next round, not later ones', () => {
@@ -108,12 +127,12 @@ describe('resolveRound', () => {
   });
 
   it('is unknown with no record, or for a round that is not saved yet', () => {
-    expect(resolveRound({ rounds: [R1, R2] }, { roundId: 'r2' })).toEqual({
+    expect(resolveRound({ rounds: [R1, R2] }, { roundId: 'r2' })).toMatchObject({
       roundKind: 'follow_up',
       roundId: 'r2',
       outcome: 'unknown',
     });
-    expect(resolveRound({ rounds: [] }, { roundId: 'r1' })).toEqual({
+    expect(resolveRound({ rounds: [] }, { roundId: 'r1' })).toMatchObject({
       roundKind: 'initial',
       roundId: 'r1',
       outcome: 'unknown',
@@ -127,7 +146,12 @@ describe('resolveRound', () => {
   it('classifies the first round as initial and diffs it against nothing', () => {
     expect(
       resolveRound(conversation([R1], [AFTER_R1, [gateway('confirmed')]]), { roundId: 'r1' })
-    ).toEqual({ roundKind: 'initial', roundId: 'r1', outcome: 'found', hasConfirmedCause: true });
+    ).toMatchObject({
+      roundKind: 'initial',
+      roundId: 'r1',
+      outcome: 'found',
+      hasConfirmedCause: true,
+    });
   });
 
   it('is an alert recovery only when followUp says so, never from the message', () => {

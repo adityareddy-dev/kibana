@@ -7,6 +7,7 @@
 
 import { loggerMock } from '@kbn/logging-mocks';
 import { buildTurnScripts } from '@kbn/nightshift-decision-trees';
+import type { HypothesisNote, RoundResolution } from '../investigation_round';
 import { DECISION_TREE_PROMPT_TOOLS } from '../tools/decision_tree/prompt_tools';
 import { SANDBOX_VIEW_FILE_TOOL_ID } from '../tools/sandbox_bash/view_file_tool';
 import { createLearningStore } from './learning_store';
@@ -151,10 +152,48 @@ describe('prepareReinforcementTurn', () => {
       expect(turn.skipped === false && turn.message).toContain('symptom:seeded-by-round-one');
     });
 
-    it('never asks to reinforce a path as causal', async () => {
+    it('does not reinforce a path as causal without an outcome', async () => {
       const turn = await prepare({ earlierAccessedTreeIds: ['symptom:checkout-latency'] });
 
       expect(turn.skipped === false && turn.message).not.toContain(scripts.reinforce);
+    });
+
+    const followUp = (
+      outcome: 'found' | 'unchanged' | 'unknown',
+      recovery = false,
+      stillConfirmed: HypothesisNote[] = []
+    ): RoundResolution => ({
+      roundKind: recovery ? 'alert_recovery' : 'follow_up',
+      roundId: 'round-2',
+      outcome,
+      newlyConfirmed: outcome === 'found' ? [{ candidate: 'Pool leak', status: 'confirmed' }] : [],
+      noLongerConfirmed: [],
+      stillConfirmed,
+    });
+
+    it.each<[string, RoundResolution, boolean]>([
+      ['found a root cause', followUp('found'), true],
+      ['changed nothing', followUp('unchanged'), false],
+      [
+        'followed a recovery that kept the cause',
+        followUp('unchanged', true, [{ candidate: 'Pool leak', status: 'confirmed' }]),
+        true,
+      ],
+      ['left no record of the root cause', followUp('unknown'), false],
+    ])('reinforces as causal only when the round %s', async (_case, outcome, reinforces) => {
+      const turn = await prepare({ earlierAccessedTreeIds: ['symptom:checkout-latency'], outcome });
+      const message = turn.skipped === false ? turn.message : '';
+
+      expect(message.includes(scripts.reinforce)).toBe(reinforces);
+      expect(message.includes(scripts.followupExtend)).toBe(!reinforces);
+      expect(message).toContain('What this follow-up did to the root cause:');
+    });
+
+    it('ignores the outcome on a first round', async () => {
+      const turn = await prepare({ turnKind: 'initial_investigation', outcome: followUp('found') });
+
+      expect(turn.skipped === false && turn.message).toContain(scripts.initialCreate);
+      expect(turn.skipped === false && turn.message).not.toContain('What this follow-up did');
     });
 
     // A recovery or a reply has nothing new to seed a tree from.

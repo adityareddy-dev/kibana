@@ -9,8 +9,8 @@ import { z } from '@kbn/zod/v4';
 import { StepCategory } from '@kbn/workflows';
 import { createServerStepDefinition } from '@kbn/workflows-extensions/server';
 import type { CoreStart, KibanaRequest, Logger } from '@kbn/core/server';
-import { isConversationNotFoundError } from '@kbn/agent-builder-common';
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-server';
+import type { WorkflowsServerPluginSetup } from '@kbn/workflows-management-plugin/server';
 import { usesDecisionTrees } from '../agents/agent_policy';
 import {
   extractAccessedTreeIdsFromRounds,
@@ -18,13 +18,18 @@ import {
   type InvestigationToolCall,
 } from '../decision_trees/accessed_trees';
 import { prepareReinforcementTurn } from '../decision_trees/register_decision_trees';
-import { withToolResults } from '../investigation_round';
+import {
+  createInvestigationRunReader,
+  readRoundOutcome,
+  withToolResults,
+} from '../investigation_round';
 import { withNightshiftBackgroundSpan } from '../tracing';
 import { toolCallsSchema, toolResultsSchema } from './tool_calls_schema';
 
 export const decisionTreePrepareStepDefinition = ({
   getTelemetryConnectorId,
   getAgentBuilder,
+  getWorkflowsManagement,
   getSavedObjects,
   getUiSettings,
   logger,
@@ -35,6 +40,7 @@ export const decisionTreePrepareStepDefinition = ({
     conversationId?: string
   ) => string | undefined | Promise<string | undefined>;
   getAgentBuilder: () => AgentBuilderPluginStart | undefined;
+  getWorkflowsManagement?: () => Pick<WorkflowsServerPluginSetup, 'management'> | undefined;
   getSavedObjects?: () => CoreStart['savedObjects'] | undefined;
   getUiSettings?: () => CoreStart['uiSettings'] | undefined;
   logger: Logger;
@@ -128,23 +134,31 @@ export const decisionTreePrepareStepDefinition = ({
         throw new Error('Agent Builder is not available, so the investigation cannot be read');
       }
       const request = context.contextManager.getFakeRequest();
+      const workflowContext = context.contextManager.getContext();
+      const { spaceId } = workflowContext.workflow;
       const conversations = await agentBuilder.conversations.getScopedClient({ request });
+      const workflowsManagement = getWorkflowsManagement?.();
       // A chat's conversation is only saved with its first round, so a missing one has no
       // earlier rounds. Any other failure must not be read as a first round.
-      const rounds = await conversations.get(conversationId).then(
-        (conversation) => conversation.rounds,
-        (error) => {
-          if (isConversationNotFoundError(error)) {
-            return [];
-          }
-          throw error;
-        }
-      );
+      const { rounds, outcome } = await readRoundOutcome({
+        conversations,
+        conversationId,
+        roundId,
+        ...(workflowsManagement
+          ? {
+              readInvestigationRun: createInvestigationRunReader({
+                workflowsManagement,
+                spaceId,
+                request,
+                logger,
+              }),
+            }
+          : {}),
+        signal: context.abortSignal,
+      });
       const earlierRounds = roundsBefore(rounds, roundId);
 
       const telemetryConnectorId = await getTelemetryConnectorId(request, conversationId);
-      const workflowContext = context.contextManager.getContext();
-      const { spaceId } = workflowContext.workflow;
       const executionId = workflowContext.execution?.id;
       const turn = await withNightshiftBackgroundSpan(
         {
@@ -171,7 +185,11 @@ export const decisionTreePrepareStepDefinition = ({
               (toolCalls ?? []) as InvestigationToolCall[],
               toolResults ?? []
             ),
+            outcome,
           });
+          if (outcome.roundKind !== 'initial') {
+            span?.setAttribute('nightshift.root_cause_change', outcome.outcome);
+          }
           if (res.skipped) {
             span?.setAttribute('nightshift.skipped', true);
             return res;

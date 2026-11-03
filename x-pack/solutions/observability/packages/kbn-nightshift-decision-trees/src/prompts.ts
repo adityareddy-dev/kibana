@@ -163,6 +163,7 @@ export const buildTurnPrompt = ({
   activeRemediations,
   connectorNames,
   referencedMemories,
+  rootCauseOutcome,
   script,
 }: {
   editableTreePaths: string[];
@@ -171,6 +172,8 @@ export const buildTurnPrompt = ({
   activeRemediations?: string[];
   connectorNames: string[];
   referencedMemories?: string;
+  /** For a follow-up: what it did to the confirmed root cause. */
+  rootCauseOutcome?: string;
   script: string;
 }): string => {
   const bulletsOrNone = (items: string[]): string =>
@@ -192,7 +195,14 @@ ${connectorNames.length > 0 ? connectorNames.join(', ') : 'None'}
 
 Referenced memories:
 ${referencedMemories || 'None'}
-
+${
+  rootCauseOutcome
+    ? `
+What this follow-up did to the root cause:
+${rootCauseOutcome}
+`
+    : ''
+}
 ${script}
 `;
 };

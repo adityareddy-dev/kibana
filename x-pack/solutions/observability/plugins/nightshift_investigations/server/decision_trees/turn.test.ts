@@ -59,7 +59,7 @@ describe('buildReinforcementPrompt', () => {
     expect(message).toContain(scripts.followupExtend);
   });
 
-  it('never asks a follow-up to reinforce a path as causal', () => {
+  it('does not ask a follow-up to reinforce a path as causal unless told it confirmed one', () => {
     const message = buildReinforcementPrompt({
       ...base,
       turnKind: 'feedback_reinforcement',
@@ -67,6 +67,21 @@ describe('buildReinforcementPrompt', () => {
     });
 
     expect(message).not.toContain(scripts.reinforce);
+  });
+
+  it('asks a follow-up that confirmed the root cause to reinforce, and says what it did', () => {
+    const message = buildReinforcementPrompt({
+      ...base,
+      turnKind: 'feedback_reinforcement',
+      trees: [tree({ version: 3 })],
+      causalConfirmed: true,
+      rootCauseOutcome: 'This round confirmed a root cause that was not confirmed before.',
+    });
+
+    expect(message).toContain(scripts.reinforce);
+    expect(message).toContain(
+      'What this follow-up did to the root cause:\nThis round confirmed a root cause'
+    );
   });
 
   // The investigation reaches the agent as conversation history, not inside this message.

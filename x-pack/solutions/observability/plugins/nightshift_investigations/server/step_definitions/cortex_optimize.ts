@@ -10,6 +10,7 @@ import { StepCategory } from '@kbn/workflows';
 import { createServerStepDefinition } from '@kbn/workflows-extensions/server';
 import type { AnalyticsServiceSetup, CoreStart, Logger } from '@kbn/core/server';
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-server';
+import type { WorkflowsServerPluginSetup } from '@kbn/workflows-management-plugin/server';
 import type { InferenceServerStart } from '@kbn/inference-plugin/server';
 import { MAX_KEYWORD_LENGTH } from '../../common';
 import type { InvestigationToolCall } from '../decision_trees/accessed_trees';
@@ -32,6 +33,7 @@ export { withToolResults };
 
 export const cortexOptimizeStepDefinition = ({
   getAgentBuilder,
+  getWorkflowsManagement,
   getInference,
   getSavedObjects,
   getUiSettings,
@@ -40,6 +42,7 @@ export const cortexOptimizeStepDefinition = ({
   isEnabled,
 }: {
   getAgentBuilder: () => AgentBuilderPluginStart | undefined;
+  getWorkflowsManagement?: () => Pick<WorkflowsServerPluginSetup, 'management'> | undefined;
   getInference: () => InferenceServerStart | undefined;
   getSavedObjects: () => CoreStart['savedObjects'] | undefined;
   getUiSettings: () => CoreStart['uiSettings'] | undefined;
@@ -139,6 +142,7 @@ export const cortexOptimizeStepDefinition = ({
                 roundConnectorId: context.input.round_connector_id,
                 logger,
                 getAgentBuilder,
+                getWorkflowsManagement,
                 getInference,
                 getSavedObjects,
                 getUiSettings,

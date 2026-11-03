@@ -2071,6 +2071,58 @@ describe('optimizeMemory', () => {
     expect(store.upsert).not.toHaveBeenCalled();
   });
 
+  it('marks no memory useful for a round that confirmed no root cause, but keeps harmful labels', async () => {
+    const store = createStore({
+      get: jest.fn().mockImplementation(async (id: string) => page(id)),
+    });
+    const proposeLabels = jest
+      .fn()
+      .mockResolvedValue({ useful: ['memory_a'], harmful: ['memory_b'] });
+
+    const summary = await optimizeMemory({
+      store,
+      recalledIds: ['memory_a', 'memory_b'],
+      proposeLabels,
+      proposeExtractions: jest.fn().mockResolvedValue({ extractions: [] }),
+      userMessage: 'Which index did you query?',
+      assistantMessage: 'traces-*',
+      toolCalls: [],
+      roundOutcome: 'This round did not change which root cause is confirmed.',
+      allowUseful: false,
+      logger: loggerMock.create(),
+    });
+
+    expect(proposeLabels.mock.calls[0][0].transcript).toContain(
+      'What this follow-up did to the root cause:\nThis round did not change which root cause is confirmed.'
+    );
+    expect(store.archive).toHaveBeenCalledWith('memory_b', 'harmful');
+    expect(store.applyCounterUpdates).toHaveBeenCalledWith([
+      { id: 'memory_a', addImp: 1, addConv: 0 },
+    ]);
+    expect(summary).toEqual(expect.objectContaining({ usefulCount: 0, harmfulCount: 1 }));
+  });
+
+  it('marks memories useful when the round may confirm', async () => {
+    const store = createStore({
+      get: jest.fn().mockImplementation(async (id: string) => page(id)),
+    });
+
+    await optimizeMemory({
+      store,
+      recalledIds: ['memory_a'],
+      proposeLabels: jest.fn().mockResolvedValue({ useful: ['memory_a'], harmful: [] }),
+      proposeExtractions: jest.fn().mockResolvedValue({ extractions: [] }),
+      userMessage: 'why?',
+      assistantMessage: 'because',
+      toolCalls: [],
+      logger: loggerMock.create(),
+    });
+
+    expect(store.applyCounterUpdates).toHaveBeenCalledWith([
+      { id: 'memory_a', addImp: 1, addConv: 1 },
+    ]);
+  });
+
   it('critiques from tool-call parameters but does not extract without tool results', async () => {
     const store = createStore({
       get: jest.fn().mockImplementation(async (id: string) => page(id)),

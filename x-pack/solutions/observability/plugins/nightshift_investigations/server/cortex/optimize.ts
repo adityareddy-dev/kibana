@@ -288,12 +288,18 @@ export const applyCortexEdits = async ({
   edits,
   telemetry,
   provenance,
+  allowCorroboration = true,
   logger,
 }: {
   store: CortexPageStore;
   edits: CortexEditProposal[];
   telemetry: CortexTelemetry;
   provenance?: WriteProvenance;
+  /**
+   * False for a round that confirmed nothing: it may still write pages, but no edit counts as a
+   * corroboration, so none is promoted.
+   */
+  allowCorroboration?: boolean;
   logger: Logger;
 }): Promise<AppliedWriteRecord[]> => {
   const { pages } = await store.list();
@@ -326,6 +332,10 @@ export const applyCortexEdits = async ({
       const id = toCortexKiId(edit.entity_type, slug);
       if (edit.action === 'corroborate') {
         if (touchedIds.has(id)) {
+          continue;
+        }
+        if (!allowCorroboration) {
+          logger.debug(`Skipped corroborating Cortex page ${id}: the round confirmed no cause`);
           continue;
         }
         const before = await store.get(id);
@@ -376,14 +386,20 @@ export const applyCortexEdits = async ({
       // single run can never publish a fact as established. A page already touched this run keeps
       // its status, so a page revived earlier in the run is not promoted on its old count.
       const alreadyTouched = touchedIds.has(id);
-      const confirms = existing !== undefined && existing.status !== 'archived' && !alreadyTouched;
+      const confirms =
+        allowCorroboration &&
+        existing !== undefined &&
+        existing.status !== 'archived' &&
+        !alreadyTouched;
       const corroborations = confirms ? existing.corroborations + 1 : existing?.corroborations;
       touchedIds.add(id);
       const status = !existing
         ? 'tentative'
         : alreadyTouched
         ? existing.status
-        : statusAfterCorroboration(existing.status, corroborations ?? 0);
+        : confirms || existing.status === 'archived'
+        ? statusAfterCorroboration(existing.status, corroborations ?? 0)
+        : existing.status;
       const afterContent = edit.content ?? existing?.content ?? '';
       const written = await store.upsert({
         entityType: edit.entity_type,
@@ -426,6 +442,8 @@ export const optimizeCortex = async ({
   toolCalls,
   telemetry,
   provenance,
+  roundOutcome,
+  allowCorroboration = true,
   logger,
 }: {
   store: CortexPageStore;
@@ -435,6 +453,9 @@ export const optimizeCortex = async ({
   toolCalls: InvestigationToolCall[];
   telemetry: CortexTelemetry;
   provenance?: WriteProvenance;
+  /** What a follow-up did to the root cause, from `formatRoundOutcome`. */
+  roundOutcome?: string;
+  allowCorroboration?: boolean;
   logger: Logger;
 }): Promise<AppliedWriteRecord[]> => {
   await store.pruneDuplicates();
@@ -452,6 +473,7 @@ export const optimizeCortex = async ({
     '',
     '## Assistant',
     assistantMessage.slice(0, MAX_TRANSCRIPT_CHARS),
+    ...(roundOutcome ? ['', '## What this follow-up did to the root cause', roundOutcome] : []),
   ].join('\n');
 
   const { edits } = await proposeEdits({ transcript, catalog: pages });
@@ -460,5 +482,5 @@ export const optimizeCortex = async ({
     return [];
   }
 
-  return applyCortexEdits({ store, edits, telemetry, provenance, logger });
+  return applyCortexEdits({ store, edits, telemetry, provenance, allowCorroboration, logger });
 };

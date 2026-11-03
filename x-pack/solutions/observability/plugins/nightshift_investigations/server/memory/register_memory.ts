@@ -6,6 +6,7 @@
  */
 
 import type { CoreStart, ElasticsearchClient, KibanaRequest, Logger } from '@kbn/core/server';
+import type { WorkflowsServerPluginSetup } from '@kbn/workflows-management-plugin/server';
 import type { AgentBuilderPluginStart } from '@kbn/agent-builder-server';
 import type { ContextEnginePluginSetup } from '@kbn/context-engine-plugin/server';
 import type { InferenceServerStart } from '@kbn/inference-plugin/server';
@@ -19,7 +20,12 @@ import {
 import type { InvestigationToolCall } from '../decision_trees/accessed_trees';
 import { previewText } from './log_format';
 import { stepsFromRound, stepsFromToolCalls, type TranscriptStep } from './transcript';
-import { loadInvestigationRound } from '../investigation_round';
+import {
+  countsAsConfirmation,
+  formatRoundOutcome,
+  loadInvestigationRound,
+  loadRoundOutcome,
+} from '../investigation_round';
 import { materializeMemory, type MaterializeMemoryResult } from './materialize';
 import {
   createLlmProposeMemoryExtractions,
@@ -140,6 +146,7 @@ export const runMemoryOptimize = async ({
   spaceId,
   signal,
   getAgentBuilder,
+  getWorkflowsManagement,
   getInference,
   getSavedObjects,
   getUiSettings,
@@ -161,6 +168,7 @@ export const runMemoryOptimize = async ({
   spaceId: string;
   signal?: AbortSignal;
   getAgentBuilder: () => AgentBuilderPluginStart | undefined;
+  getWorkflowsManagement?: () => Pick<WorkflowsServerPluginSetup, 'management'> | undefined;
   getInference: () => InferenceServerStart | undefined;
   getSavedObjects: () => CoreStart['savedObjects'] | undefined;
   getUiSettings: () => CoreStart['uiSettings'] | undefined;
@@ -205,6 +213,16 @@ export const runMemoryOptimize = async ({
       ? stepsFromRound(loaded.rawSteps as Parameters<typeof stepsFromRound>[0])
       : stepsFromToolCalls(toolCalls);
   const resolvedRoundId = loaded.roundId || roundId;
+  const outcome = await loadRoundOutcome({
+    agentBuilder: getAgentBuilder(),
+    workflowsManagement: getWorkflowsManagement?.(),
+    request,
+    spaceId,
+    conversationId,
+    roundId: resolvedRoundId,
+    logger,
+    signal,
+  });
 
   const store = createMemoryStore({ esClient, logger, spaceId, signal });
   return optimizeMemory({
@@ -228,6 +246,8 @@ export const runMemoryOptimize = async ({
     conversationId,
     roundId: resolvedRoundId,
     workflowExecutionId: interactionId,
+    roundOutcome: formatRoundOutcome(outcome),
+    allowUseful: countsAsConfirmation(outcome),
     logger,
     signal,
   });

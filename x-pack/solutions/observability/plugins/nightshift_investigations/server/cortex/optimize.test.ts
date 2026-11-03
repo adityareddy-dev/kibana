@@ -406,6 +406,95 @@ describe('applyCortexEdits', () => {
       expect.objectContaining({ status: 'tentative', corroborations: 4 })
     );
   });
+
+  describe('for a round that confirmed no root cause', () => {
+    const existing = {
+      id: 'cortex_service_otel-demo-cart',
+      title: 'Cart',
+      entity_type: 'service' as const,
+      status: 'tentative' as const,
+      corroborations: 1,
+      updated_at: '2026-09-09T12:00:00.000Z',
+      slug: 'otel-demo-cart',
+      content: 'Cart uses Redis.',
+    };
+    const createStore = (page = existing): CortexPageStore => ({
+      list: jest.fn().mockResolvedValue({
+        pages: [page],
+        stats: { total: 1, established: 0, total_corroborations: page.corroborations },
+      }),
+      get: jest.fn().mockResolvedValue(page),
+      upsert: jest.fn().mockResolvedValue({}),
+      create: jest.fn(),
+      corroborate: jest.fn().mockResolvedValue({}),
+      archive: jest.fn().mockResolvedValue({}),
+      pruneDuplicates: jest.fn().mockResolvedValue(0),
+    });
+
+    it('skips corroborations', async () => {
+      const store = createStore();
+      const telemetry = createTelemetry();
+      const writes = await applyCortexEdits({
+        store,
+        telemetry,
+        logger: loggerMock.create(),
+        allowCorroboration: false,
+        edits: [
+          { action: 'corroborate', entity_type: 'service', slug: 'otel-demo-cart', title: 'Cart' },
+        ],
+      });
+
+      expect(store.corroborate).not.toHaveBeenCalled();
+      expect(writes).toEqual([]);
+      expect(telemetry.reportEditsApplied).toHaveBeenCalledWith([]);
+    });
+
+    it('rewrites a page without counting a corroboration or promoting it', async () => {
+      const store = createStore();
+      await applyCortexEdits({
+        store,
+        telemetry: createTelemetry(),
+        logger: loggerMock.create(),
+        allowCorroboration: false,
+        edits: [
+          {
+            action: 'upsert',
+            entity_type: 'service',
+            slug: 'otel-demo-cart',
+            title: 'Cart',
+            content: 'Cart uses Redis and flagd.',
+          },
+        ],
+      });
+
+      expect(store.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'tentative',
+          corroborations: 1,
+          content: 'Cart uses Redis and flagd.',
+        })
+      );
+    });
+
+    it('still archives and still revives an archived page as tentative', async () => {
+      const store = createStore({ ...existing, status: 'archived' as never });
+      await applyCortexEdits({
+        store,
+        telemetry: createTelemetry(),
+        logger: loggerMock.create(),
+        allowCorroboration: false,
+        edits: [
+          { action: 'upsert', entity_type: 'service', slug: 'otel-demo-cart', title: 'Cart' },
+          { action: 'archive', entity_type: 'topic', slug: 'old-note', title: 'Old note' },
+        ],
+      });
+
+      expect(store.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'tentative', corroborations: 1 })
+      );
+      expect(store.archive).toHaveBeenCalledWith('cortex_topic_old-note');
+    });
+  });
 });
 
 describe('renderToolCalls', () => {
@@ -579,6 +668,55 @@ describe('optimizeCortex', () => {
     );
     expect(transcript.indexOf('## User')).toBeLessThan(transcript.indexOf('## Tool calls'));
     expect(transcript.indexOf('## Tool calls')).toBeLessThan(transcript.indexOf('## Assistant'));
+    expect(transcript).not.toContain('What this follow-up did to the root cause');
+  });
+
+  it('tells the optimizer what a follow-up did to the root cause and passes on the gate', async () => {
+    const existing = {
+      id: 'cortex_service_checkout',
+      title: 'Checkout',
+      entity_type: 'service' as const,
+      status: 'tentative' as const,
+      corroborations: 1,
+      updated_at: '2026-09-09T12:00:00.000Z',
+      slug: 'checkout',
+      content: 'Checkout uses Redis.',
+    };
+    const store: CortexPageStore = {
+      list: jest.fn().mockResolvedValue({
+        pages: [existing],
+        stats: { total: 1, established: 0, total_corroborations: 1 },
+      }),
+      get: jest.fn().mockResolvedValue(existing),
+      upsert: jest.fn(),
+      create: jest.fn(),
+      corroborate: jest.fn(),
+      archive: jest.fn(),
+      pruneDuplicates: jest.fn().mockResolvedValue(0),
+    };
+    const proposeEdits = jest.fn().mockResolvedValue({
+      edits: [
+        { action: 'corroborate', entity_type: 'service', slug: 'checkout', title: 'Checkout' },
+      ],
+    });
+
+    await optimizeCortex({
+      store,
+      telemetry: createTelemetry(),
+      logger: loggerMock.create(),
+      userMessage: 'Which index did you query?',
+      assistantMessage: 'traces-*',
+      toolCalls: [],
+      proposeEdits,
+      roundOutcome: 'This round did not change which root cause is confirmed.',
+      allowCorroboration: false,
+    });
+
+    const [{ transcript }] = proposeEdits.mock.calls[0];
+    expect(transcript).toMatch(
+      /## Assistant\ntraces-\*\n\n## What this follow-up did to the root cause\nThis round did not change/
+    );
+    expect(store.corroborate).not.toHaveBeenCalled();
   });
 
   it('skips writes when the optimizer proposes nothing', async () => {

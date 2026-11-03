@@ -20,6 +20,11 @@ import {
   parseAccessedTreesMarker,
   type InvestigationToolCall,
 } from './accessed_trees';
+import {
+  countsAsConfirmation,
+  formatRoundOutcome,
+  type RoundResolution,
+} from '../investigation_round';
 import { createLearningStore } from './learning_store';
 import { materializeDecisionTrees } from './materialize';
 import { createDecisionTreeStore } from './store';
@@ -101,11 +106,14 @@ export const prepareReinforcementTurn = async ({
   spaceId,
   signal,
   toolCalls = [],
+  outcome,
 }: {
   turnKind: DecisionTreeTurnKind;
   investigationId: string;
   /** Trees the investigator opened in the investigation's earlier rounds. */
   earlierAccessedTreeIds?: string[];
+  /** What the round did to the root cause. Without it, a follow-up never reinforces a path. */
+  outcome?: RoundResolution;
   connectorNames: string[];
   esClient: ElasticsearchClient;
   logger: Logger;
@@ -150,6 +158,12 @@ export const prepareReinforcementTurn = async ({
     learnings,
     connectorNames,
     turnKind,
+    ...(isFollowUp && outcome
+      ? {
+          causalConfirmed: countsAsConfirmation(outcome),
+          rootCauseOutcome: formatRoundOutcome(outcome),
+        }
+      : {}),
   });
   return {
     skipped: false,

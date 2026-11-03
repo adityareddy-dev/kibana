@@ -37,7 +37,7 @@ type ConversationWithAccess = Pick<Conversation, 'id' | 'title' | 'metadata' | '
   permissions: ConversationPermissions;
 };
 
-const toWorkflowExecutionIds = (metadata: ConversationWithAccess['metadata']): string[] => {
+export const toWorkflowExecutionIds = (metadata: ConversationWithAccess['metadata']): string[] => {
   const ids = metadata?.workflow_execution_ids;
   return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : [];
 };

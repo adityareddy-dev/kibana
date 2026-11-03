@@ -322,7 +322,7 @@ const toolCallsFromRoundSteps = (steps: readonly RawRoundStep[]): InvestigationT
 /** Agent Builder fires the post-execution hook before saving the round, so wait briefly, then fall back. */
 export const ROUND_READ_RETRY_DELAYS_MS = [1_000, 2_000] as const;
 
-const sleep = (ms: number, signal?: AbortSignal): Promise<void> =>
+export const sleep = (ms: number, signal?: AbortSignal): Promise<void> =>
   new Promise((resolve) => {
     if (signal?.aborted) {
       resolve();

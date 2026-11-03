@@ -44,11 +44,22 @@ export {
 
 export {
   resolveRound,
+  type HypothesisNote,
   type InvestigationRoundKind,
   type ResolvableConversation,
   type RootCauseChange,
   type RoundResolution,
 } from './round_outcome';
+
+export {
+  countsAsConfirmation,
+  createInvestigationRunReader,
+  formatRoundOutcome,
+  loadRoundOutcome,
+  readRoundOutcome,
+  type InvestigationRun,
+  type ReadInvestigationRun,
+} from './round_learning';
 
 export {
   APPLIED_WRITE_STORES,

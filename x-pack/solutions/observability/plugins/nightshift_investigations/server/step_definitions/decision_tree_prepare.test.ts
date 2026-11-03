@@ -8,6 +8,7 @@
 import { httpServerMock } from '@kbn/core-http-server-mocks';
 import { loggerMock } from '@kbn/logging-mocks';
 import { createConversationNotFoundError } from '@kbn/agent-builder-common';
+import { HYPOTHESES_ATTACHMENT_TYPE } from '@kbn/agentic-investigations-plugin/common';
 import { NIGHTSHIFT_INVESTIGATION_AGENT_ID } from '../agents/investigation';
 import { prepareReinforcementTurn } from '../decision_trees/register_decision_trees';
 import { SANDBOX_VIEW_FILE_TOOL_ID } from '../tools/sandbox_bash/view_file_tool';
@@ -25,7 +26,16 @@ const readTree = (slug: string) => ({
   results: [{ type: 'other', data: { content: 'tree' } }],
 });
 
-const savedRound = (id: string, steps: unknown[] = []) => ({ id, steps });
+const savedRound = (id: string, steps: unknown[] = [], startedAt = '2026-10-01T10:00:00.000Z') => ({
+  id,
+  steps,
+  started_at: startedAt,
+});
+
+const hypothesesVersion = (createdAt: string, status: string) => ({
+  created_at: createdAt,
+  data: { hypotheses: [{ candidate: 'Cart pool leak', status }] },
+});
 
 describe('decisionTreePrepareStepDefinition', () => {
   const logger = loggerMock.create();
@@ -166,15 +176,43 @@ describe('decisionTreePrepareStepDefinition', () => {
 
   describe('a follow-up', () => {
     it('is one when an earlier round is saved but this one is not yet', async () => {
+      const earlier = savedRound('round-1', [readTree('checkout-latency')]);
+      conversationsGet
+        .mockResolvedValueOnce({ rounds: [earlier] })
+        .mockResolvedValue({ rounds: [earlier, savedRound('round-2')] });
+
+      await run(investigatorRound);
+
+      expect(conversationsGet).toHaveBeenCalledTimes(2);
+      expect(preparedWith()).toMatchObject({
+        turnKind: 'feedback_reinforcement',
+        earlierAccessedTreeIds: ['symptom:checkout-latency'],
+      });
+    });
+
+    it('passes on what the round did to the root cause', async () => {
       conversationsGet.mockResolvedValue({
-        rounds: [savedRound('round-1', [readTree('checkout-latency')])],
+        rounds: [
+          savedRound('round-1', [], '2026-10-01T10:00:00.000Z'),
+          savedRound('round-2', [], '2026-10-01T11:00:00.000Z'),
+        ],
+        attachments: [
+          {
+            type: HYPOTHESES_ATTACHMENT_TYPE,
+            versions: [
+              hypothesesVersion('2026-10-01T10:05:00.000Z', 'investigating'),
+              hypothesesVersion('2026-10-01T11:05:00.000Z', 'confirmed'),
+            ],
+          },
+        ],
       });
 
       await run(investigatorRound);
 
-      expect(preparedWith()).toMatchObject({
-        turnKind: 'feedback_reinforcement',
-        earlierAccessedTreeIds: ['symptom:checkout-latency'],
+      expect(preparedWith().outcome).toMatchObject({
+        roundKind: 'follow_up',
+        outcome: 'found',
+        newlyConfirmed: [{ candidate: 'Cart pool leak', status: 'confirmed' }],
       });
     });
 
@@ -196,7 +234,9 @@ describe('decisionTreePrepareStepDefinition', () => {
     });
 
     it('reports the prepared turn', async () => {
-      conversationsGet.mockResolvedValue({ rounds: [savedRound('round-1')] });
+      conversationsGet.mockResolvedValue({
+        rounds: [savedRound('round-1'), savedRound('round-2')],
+      });
 
       await expect(run(investigatorRound)).resolves.toEqual({
         output: {
@@ -210,7 +250,9 @@ describe('decisionTreePrepareStepDefinition', () => {
     });
 
     it('is skipped when the investigation has no tree to build on', async () => {
-      conversationsGet.mockResolvedValue({ rounds: [savedRound('round-1')] });
+      conversationsGet.mockResolvedValue({
+        rounds: [savedRound('round-1'), savedRound('round-2')],
+      });
       jest.mocked(prepareReinforcementTurn).mockResolvedValue({ skipped: true });
 
       await expect(run(investigatorRound)).resolves.toEqual(skipped);

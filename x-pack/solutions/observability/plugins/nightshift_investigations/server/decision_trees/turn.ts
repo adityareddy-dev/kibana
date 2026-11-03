@@ -24,17 +24,21 @@ export const buildReinforcementPrompt = ({
   learnings,
   connectorNames,
   turnKind,
+  causalConfirmed = false,
+  rootCauseOutcome,
 }: {
   trees: DecisionTreeSummary[];
   learnings: LearningRecord[];
   connectorNames: string[];
   turnKind: DecisionTreeTurnKind;
+  /** A follow-up that verified the root cause reinforces the causal path; any other extends. */
+  causalConfirmed?: boolean;
+  /** For a follow-up: what it did to the root cause, from `formatRoundOutcome`. */
+  rootCauseOutcome?: string;
 }): string => {
   const script = selectTurnScript({
     turnKind,
-    // Nothing tells yet whether a follow-up confirmed the root cause, so a follow-up extends the
-    // tree and never reinforces a path as causal.
-    causalConfirmed: false,
+    causalConfirmed,
     // Callers pass only the trees this investigation used, never every tree in the index.
     hasExistingTrees: trees.length > 0,
     tools: DECISION_TREE_PROMPT_TOOLS,
@@ -62,6 +66,7 @@ export const buildReinforcementPrompt = ({
       .filter((learning) => learning.kind === 'remediation')
       .map((learning) => `${learning.tree_id}: ${learning.content}`),
     connectorNames,
+    rootCauseOutcome,
     script,
   });
 };

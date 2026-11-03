@@ -27,6 +27,17 @@ export interface RoundResolution {
    * when an earlier confirmed cause was reworded.
    */
   hasConfirmedCause?: boolean;
+  /** Confirmed after the round and not before it; empty when `outcome` is `unknown`. */
+  newlyConfirmed: HypothesisNote[];
+  /** Confirmed before the round and not after it, with their status after it. */
+  noLongerConfirmed: HypothesisNote[];
+  stillConfirmed: HypothesisNote[];
+}
+
+export interface HypothesisNote {
+  candidate: string;
+  status: string;
+  reason?: string;
 }
 
 /** The parts of an Agent Builder conversation this reads. */
@@ -41,31 +52,42 @@ export interface ResolvableConversation {
 const normalizeCandidate = (candidate: string): string =>
   candidate.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.]+$/, '');
 
-/** Normalized candidates of the hypotheses in a version, and which of them are confirmed. */
+const MAX_REASON_CHARS = 600;
+
+/** The hypotheses in a version by normalized candidate, and which of them are confirmed. */
 const readHypotheses = (data: unknown) => {
   const hypotheses = (data as { hypotheses?: unknown } | null)?.hypotheses;
   if (!Array.isArray(hypotheses)) {
     return undefined;
   }
-  const all = new Set<string>();
-  const confirmed = new Set<string>();
+  const all = new Map<string, HypothesisNote>();
+  const confirmed = new Map<string, HypothesisNote>();
   for (const item of hypotheses) {
-    const { candidate, status } = (item ?? {}) as Record<string, unknown>;
-    if (typeof candidate === 'string') {
-      all.add(normalizeCandidate(candidate));
+    const { candidate, status, reason } = (item ?? {}) as Record<string, unknown>;
+    if (typeof candidate === 'string' && typeof status === 'string') {
+      const note: HypothesisNote = {
+        candidate,
+        status,
+        ...(typeof reason === 'string' && reason
+          ? { reason: reason.slice(0, MAX_REASON_CHARS) }
+          : {}),
+      };
+      all.set(normalizeCandidate(candidate), note);
       if (status === 'confirmed') {
-        confirmed.add(normalizeCandidate(candidate));
+        confirmed.set(normalizeCandidate(candidate), note);
       }
     }
   }
   return { all, confirmed };
 };
 
+const NO_NOTES = { newlyConfirmed: [], noLongerConfirmed: [], stillConfirmed: [] };
+
 const changeAt = (
   rounds: ResolvableConversation['rounds'],
   attachments: NonNullable<ResolvableConversation['attachments']>,
   index: number
-): Pick<RoundResolution, 'outcome' | 'hasConfirmedCause'> => {
+): Omit<RoundResolution, 'roundKind' | 'roundId'> => {
   const versions = attachments
     .filter(({ type }) => type === HYPOTHESES_ATTACHMENT_TYPE)
     .flatMap(({ versions: all }) => all)
@@ -82,24 +104,34 @@ const changeAt = (
     ? lastBefore(Date.parse(nextRound.started_at))
     : versions[versions.length - 1];
   if (!after) {
-    return { outcome: 'unknown' };
+    return { outcome: 'unknown', ...NO_NOTES };
   }
   const hasConfirmedCause = after.confirmed.size > 0;
-  const before = lastBefore(Date.parse(rounds[index].started_at))?.confirmed ?? new Set<string>();
-  if ([...before].some((candidate) => !after.all.has(candidate))) {
-    return { outcome: 'unknown', hasConfirmedCause };
+  const before =
+    lastBefore(Date.parse(rounds[index].started_at))?.confirmed ??
+    new Map<string, HypothesisNote>();
+  if ([...before.keys()].some((candidate) => !after.all.has(candidate))) {
+    return { outcome: 'unknown', hasConfirmedCause, ...NO_NOTES };
   }
 
-  const found = [...after.confirmed].some((candidate) => !before.has(candidate));
-  const dropped = [...before].some((candidate) => !after.confirmed.has(candidate));
-  const outcome: RootCauseChange = found
-    ? dropped
-      ? 'changed'
-      : 'found'
-    : dropped
-    ? 'withdrawn'
-    : 'unchanged';
-  return { outcome, hasConfirmedCause };
+  const newlyConfirmed = [...after.confirmed]
+    .filter(([candidate]) => !before.has(candidate))
+    .map(([, note]) => note);
+  const stillConfirmed = [...after.confirmed]
+    .filter(([candidate]) => before.has(candidate))
+    .map(([, note]) => note);
+  const noLongerConfirmed = [...before.keys()]
+    .filter((candidate) => !after.confirmed.has(candidate))
+    .map((candidate) => after.all.get(candidate)!);
+  const outcome: RootCauseChange =
+    newlyConfirmed.length > 0
+      ? noLongerConfirmed.length > 0
+        ? 'changed'
+        : 'found'
+      : noLongerConfirmed.length > 0
+      ? 'withdrawn'
+      : 'unchanged';
+  return { outcome, hasConfirmedCause, newlyConfirmed, noLongerConfirmed, stillConfirmed };
 };
 
 /**
@@ -130,7 +162,7 @@ export const resolveRound = (
     const index = rounds.findIndex(({ id }) => id === roundId);
     if (index === -1) {
       // Not saved yet, so every saved round is earlier.
-      return { roundKind: kindAt(rounds.length), roundId, outcome: 'unknown' };
+      return { roundKind: kindAt(rounds.length), roundId, outcome: 'unknown', ...NO_NOTES };
     }
     return { roundKind: kindAt(index), roundId, ...changeAt(rounds, attachments, index) };
   }

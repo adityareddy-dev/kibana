@@ -170,5 +170,23 @@ describe('buildTurnPrompt', () => {
     expect(prompt).toContain('Decision-tree files available for edit:\n- None');
     expect(prompt).toContain('- system:\n- None');
     expect(prompt).toContain('Enabled connectors:\nNone');
+    expect(prompt).toContain(`Referenced memories:\nNone\n\n${scripts.initialCreate}`);
+    expect(prompt).not.toContain('What this follow-up did to the root cause');
+  });
+
+  it("states a follow-up's root-cause outcome between the memories and the script", () => {
+    const prompt = buildTurnPrompt({
+      editableTreePaths: [],
+      activeSystemLearnings: [],
+      activeToolLearnings: [],
+      connectorNames: [],
+      rootCauseOutcome: 'This round confirmed a root cause that was not confirmed before.',
+      script: scripts.reinforce,
+    });
+
+    expect(prompt).toContain(
+      'Referenced memories:\nNone\n\nWhat this follow-up did to the root cause:\n' +
+        `This round confirmed a root cause that was not confirmed before.\n\n${scripts.reinforce}`
+    );
   });
 });
