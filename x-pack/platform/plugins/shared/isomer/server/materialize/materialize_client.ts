@@ -11,6 +11,8 @@ import { i18n } from '@kbn/i18n';
 import type { ValidationError } from '@kbn/isomer';
 import type { MaterializeContext, MaterializeInput } from '../../common';
 import { isMaterializeByReference } from '../../common';
+import type { AggsServices } from './executors/aggs';
+import { executeAggs } from './executors/aggs';
 import { executeEsql } from './executors/esql';
 import type { KitServices } from './kit/create_kit';
 import { createMaterializeKit } from './kit/create_kit';
@@ -42,6 +44,8 @@ export interface ScopedMaterializeClientDeps {
   search: Pick<IScopedSearchClient, 'esql'>;
   /** The node's validation errors against the runtime's packs. */
   validate: (node: MaterializedNode) => Promise<ValidationError[]>;
+  /** The user's data views, aggs and search source, which `aggs` requests run with, read on first use. */
+  getAggsServices: () => Promise<AggsServices>;
   /** The user's field formats and settings, read on first use. */
   getKitServices: () => Promise<KitServices>;
   /** The user's data views and aggs, which selections resolve against. */
@@ -83,6 +87,7 @@ export const createScopedMaterializeClient = ({
   logger,
   search,
   validate,
+  getAggsServices,
   getKitServices,
   getSelectionServices,
   kibanaVersion,
@@ -101,6 +106,14 @@ export const createScopedMaterializeClient = ({
       throw error;
     });
     return services;
+  };
+  let scopedAggsServices: Promise<AggsServices> | undefined;
+  const aggsServices = () => {
+    scopedAggsServices ??= getAggsServices().catch((error) => {
+      scopedAggsServices = undefined;
+      throw error;
+    });
+    return scopedAggsServices;
   };
 
   const bare = (node: MaterializedNode): PipelineResult => ({
@@ -168,6 +181,13 @@ export const createScopedMaterializeClient = ({
           executeEsql: (request, requestContext, index) =>
             executeEsql(request, requestContext, index, {
               search,
+              abortSignal: scope.abortSignal,
+              maxRows: maxRowsPerRequest,
+              timeoutMs: dataRequestTimeoutMs,
+            }),
+          executeAggs: (request, requestContext, index) =>
+            executeAggs(request, requestContext, index, {
+              getServices: aggsServices,
               abortSignal: scope.abortSignal,
               maxRows: maxRowsPerRequest,
               timeoutMs: dataRequestTimeoutMs,
